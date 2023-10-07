@@ -12,8 +12,21 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 #Phone number must be appended with international code without plus sign. 
-phone = input("Phone number (including country code without +):")
-message = 'CUM GANG'
+#read phone number from config file
+with open("private/config.txt", "r+") as file:
+    # Read the first line
+    phone = file.readline().strip()
+#if the file is empty, get the number from the user and write it to the file
+    if phone=='':
+        file.seek(0)  # Move the file pointer to the beginning
+        file.write(phone)
+        file.truncate()  # Remove any extra characters if the new phone number is shorter than the previous one
+
+message = input("Enter message here:")
+
+#initialise lists of links to work on
+link_q = []
+completed = []
 
 #Define Urls
 BASE_URL = "https://web.whatsapp.com/"
@@ -27,18 +40,6 @@ user_data_dir = ''.join(random.choices(string.ascii_letters, k=8))
 chrome_options.add_argument("--user-data-dir=/tmp/chrome-data/" + user_data_dir)
 chrome_options.add_argument("--incognito")
 
-# Define the version of ChromeDriver to use (94.0.4606.61 in this case)
-chrome_driver_version = "94.0.4606.61"
-
-# Create the ChromeDriverManager instance with the specified version
-chrome_driver_manager = ChromeDriverManager(version=chrome_driver_version)
-
-# Install and get the ChromeDriver executable path
-chrome_driver_path = chrome_driver_manager.install()
-
-# Create the chrome browser instance with the specific ChromeDriver path
-browser = webdriver.Chrome(executable_path=chrome_driver_path, options=chrome_options)
-
 browser = webdriver.Chrome(
     ChromeDriverManager().install(),
     options=chrome_options,
@@ -51,6 +52,8 @@ browser.maximize_window()
 browser.get(CHAT_URL.format(phone=phone))
 time.sleep(3)
 
+
+
 while True:
     #Now search the chat input box using XPath and enter the message. Send the ENTER key after it.
     inp_xpath = (
@@ -60,27 +63,25 @@ while True:
         expected_conditions.presence_of_element_located((By.XPATH, inp_xpath))
     )
     try:
-        # Wait for the elements with the "message-in" class to be present using WebDriverWait
-        message_in_elements = WebDriverWait(browser, 10).until(
-            EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".message-in"))
+        # Wait for the elements with the "message-out" class to be present using WebDriverWait (change to message out in final build)
+        message_out_elements = WebDriverWait(browser, 10).until(
+            EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".message-out"))
         )
 
         # Iterate through the elements and print their text (messages)
-        #for element in message_in_elements:
-        #    print(element.text)
-        
-        last_message = message_in_elements[-1][:-5] #[:-5] is there to remove the time from the message
-        print(last_message)
-        input_box.send_keys("You said: "+last_message)
-        #input_box.send_keys(Keys.CONTROL+"v")
-        #input_box.send_keys(Keys.ENTER)
-        input_box.send_keys(Keys.ENTER)
+        for e in message_out_elements:
+            if "facebook" in e.text:
+                link_q.append(e.text)
+                print(link_q)
     except TimeoutException:
         # Handle the TimeoutException here.
         print("Timed out while waiting for the elements. Retrying...")
 
 
-
+    input_box.send_keys(message)
+    #input_box.send_keys(Keys.CONTROL+"v")
+    #input_box.send_keys(Keys.ENTER)
+    input_box.send_keys(Keys.ENTER)
     time.sleep(20)
     
 time.sleep(5)
